@@ -13,7 +13,6 @@ def generate_path_to_songs(path_to_songs = PATH_TO_DATASET):
         # Get the annotations and parse them to a list
         annotations_csv = pd.read_csv(PATH_TO_DATASET + "metadata/UrbanSound8K.csv")
         annotations_csv = annotations_csv[["slice_file_name","classID","fold","class"]]
-        annotations_csv["start"] = 'None'
         annotations_csv["path"] = 'None'
         annotations_csv["sample_rate"] = 'None'
         annotations_csv["length"] = "None"
@@ -49,6 +48,7 @@ def generate_timestamps_for_audio(annotations):
     return annotations
 
 if __name__ == "__main__":
+    print("Beggining... bup-bap")
     chunk_size = int(CHUNK_SIZE*SR)
     path_to_songs = None
     annotations_of_chunks = None
@@ -58,4 +58,4 @@ if __name__ == "__main__":
     annotations = generate_timestamps_for_audio(annotations)
 
     annotations.to_csv("functional_urban8k.csv")
-    print("Finished")
+    print("Finished bap-bap")
