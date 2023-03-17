@@ -16,10 +16,9 @@ class UrbanSound8K_parser(Dataset):
         self.all_annotations = pd.read_csv(annotation_csv)
 
     def __len__(self):
-        return len(self.annotations_of_chunks)
+        return len(self.annotations.index)
 
     def __getitem__(self, index):
-        
         audio, sr = taudio.backend.sox_io_backend.load(self.annotations.loc[index, "path"])
 
         # Resampling
@@ -34,8 +33,14 @@ class UrbanSound8K_parser(Dataset):
 
         annotation = torch.Tensor([self.annotations.loc[index, "classID"]]) 
 
-        return audio[0,:], annotation
+        return audio[0,:].to(self.device), annotation.to(self.device)
 
     def prepare_folds(self, test_fold_no = 1):
         self.annotations = self.all_annotations.loc[self.all_annotations["fold"] != test_fold_no, :]
         self.test_annotations = self.all_annotations.loc[self.all_annotations["fold"] == test_fold_no, :]
+
+        self.annotations = self.annotations.set_index(pd.Index(np.arange(0, len(self.annotations.index))))
+        self.test_annotations = self.test_annotations.set_index(pd.Index(np.arange(0, len(self.test_annotations.index))))
+
+    def set_device(self, device_name = "cpu"):
+        self.device = device_name
