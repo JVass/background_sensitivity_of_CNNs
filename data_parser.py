@@ -42,5 +42,8 @@ class UrbanSound8K_parser(Dataset):
         self.annotations = self.annotations.set_index(pd.Index(np.arange(0, len(self.annotations.index))))
         self.test_annotations = self.test_annotations.set_index(pd.Index(np.arange(0, len(self.test_annotations.index))))
 
+    def set_as_annotations(self, annotations):
+        self.annotations = annotations
+
     def set_device(self, device_name = "cpu"):
         self.device = device_name
