@@ -1,5 +1,3 @@
-import torch
-
 PATH_TO_DATASET = ""
 
 SR = 48000
@@ -18,9 +16,9 @@ BATCH_SIZE = 64
 EPOCHS = 100
 
 # Early stopping parameters
-PATIENCE = 5
-MIN_DELTA = 0.02
+PATIENCE = 3
+MIN_DELTA = 0.2
 
 # Loss function weights
 TIME_WEIGHT = 10
-FREQ_WEIGHT = 0.1
+FREQ_WEIGHT = 0.05
