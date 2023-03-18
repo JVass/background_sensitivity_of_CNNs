@@ -41,10 +41,9 @@ model = model.to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr = LEARNING_RATE)
 
 train_parser.prepare_folds(test_fold_no=1)
-train_parser.set_as_annotations(train_parser.test_annotations)
 train_parser.set_device(device)
 
-test_parser.prepare_folds(test_fold_no=2)
+test_parser.prepare_folds(test_fold_no=1)
 test_parser.set_as_annotations(test_parser.test_annotations)
 test_parser.set_device(device)
 
@@ -128,7 +127,7 @@ for epoch in range(EPOCHS):
             tensorboard_writer.add_image("Train predicted_audio", spec_photo[0:3, ::, ::], iter_no)
 
             # Test-set
-            audio, _ = test_parser[6]
+            audio, _ = test_parser[8]
 
             outputs, _ = model(audio)
             
