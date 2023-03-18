@@ -17,7 +17,7 @@ EPOCHS = 100
 
 # Early stopping parameters
 PATIENCE = 3
-MIN_DELTA = 0.2
+MIN_DELTA = 0.01
 
 # Loss function weights
 TIME_WEIGHT = 10

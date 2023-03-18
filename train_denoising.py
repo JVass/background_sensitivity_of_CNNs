@@ -8,6 +8,7 @@ from tqdm import tqdm
 import auraloss
 import matplotlib.pyplot as plt
 import torchvision
+import numpy as np
 
 from torch.utils.tensorboard import SummaryWriter
 
@@ -40,21 +41,25 @@ model = model.to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr = LEARNING_RATE)
 
 train_parser.prepare_folds(test_fold_no=1)
+train_parser.set_as_annotations(train_parser.test_annotations)
 train_parser.set_device(device)
 
-test_parser.prepare_folds(test_fold_no=1)
-test_parser.set_device(device)
+test_parser.prepare_folds(test_fold_no=2)
 test_parser.set_as_annotations(test_parser.test_annotations)
+test_parser.set_device(device)
+
 
 train_loader = torch.utils.data.DataLoader(train_parser, batch_size = BATCH_SIZE, shuffle = True)
 test_loader = torch.utils.data.DataLoader(test_parser, batch_size = BATCH_SIZE, shuffle = False)
 
+
+prev_train_loss = 10e5
+prev_test_loss = 10e5
+best_loss = 10e5
+built_rage = 0
 for epoch in range(EPOCHS):
     print(f"Epoch: {epoch + 1}")
     train_loss = 0
-    prev_train_loss = 10e5
-    best_epoch = 0
-    best_loss = 10e5
 
     for iteration, (audio, _) in enumerate(tqdm(train_loader)):    
         optimizer.zero_grad()
@@ -74,7 +79,7 @@ for epoch in range(EPOCHS):
         multires_spec_sim = multires_spec_similarity(outputs, audio)
 
         iter_no = iteration + epoch*len(train_loader)
-        tensorboard_writer.add_scalars("Loss scalar", {"Train loss": loss,
+        tensorboard_writer.add_scalars("Train", {"Train loss": loss,
                                                         "Train loss (time)": loss_time,
                                                         "Train loss (freq)": loss_freq,
                                                        "Train snr" : snr_sim.item(),
@@ -83,7 +88,7 @@ for epoch in range(EPOCHS):
                                                         iter_no)
         
         # Visualization
-        if (iter_no % 5 == 0):
+        if (iter_no % 50 == 0):
             # Train-set
             audio, _ = train_parser[5]
 
@@ -185,7 +190,7 @@ for epoch in range(EPOCHS):
         sdsdr_sim /= len(test_loader)
         multires_spec_sim /= len(test_loader) 
 
-        tensorboard_writer.add_scalars("Loss scalar", {"Test loss": test_loss,
+        tensorboard_writer.add_scalars("Test", {"Test loss": test_loss,
                                                         "Test loss (time)": loss_time,
                                                         "Test loss (freq)": loss_freq,
                                                     "Test snr" : snr_sim.item(),
@@ -196,17 +201,22 @@ for epoch in range(EPOCHS):
     
     # Early stopping
     if best_loss > test_loss_per_epoch:
-        building_rage = 0
+        built_rage = 0
         best_loss = test_loss_per_epoch
         torch.save(model.state_dict(), "models/denoise_ckpt.pth")
-    elif torch.abs(prev_train_loss - test_loss_per_epoch) < MIN_DELTA:
-        building_rage += 1
-    elif building_rage == PATIENCE:
+    elif np.abs(prev_test_loss - test_loss_per_epoch) < MIN_DELTA:
+        built_rage += 1
+    
+    
+    if built_rage >= PATIENCE:
         print(f"Early stopping at: {epoch}")
+        print(f"Last checkpoint at epoch: {epoch - PATIENCE}")
         break
 
-    prev_train_loss = train_loss_per_epoch
-    print(f"Mean loss: {train_loss / len(train_loader)}")
+    prev_test_loss = test_loss_per_epoch
+    print(f"Rage: {built_rage}")
+    print(f"Mean loss (train): {train_loss_per_epoch}")
+    print(f"Mean loss (test): {test_loss_per_epoch}")
     print("---------------------")
 
 torch.save(model.state_dict(), "models/denoiser.pth")
