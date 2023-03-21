@@ -140,5 +140,8 @@ class DenseNet(nn.Module):
 
         output = self.model(magnitude)
         output = self.softmax(output)
-        output = torch.argmax(output, dim = 1)
         return output
+    
+    def set_device(self, device):
+        self.window_tensor = self.window_tensor.to(device)
+        self.device = device
