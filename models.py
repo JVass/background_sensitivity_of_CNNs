@@ -2,6 +2,8 @@ import torch.nn as nn
 import torch.functional as F
 import torch
 from global_vars import *
+import torchvision.models as models
+import torchvision
 
 class Autoencoder(nn.Module):
     def __init__(self, n_channels = 1, number_of_filters = 128, device_name = "cpu"):
@@ -84,6 +86,61 @@ class Autoencoder(nn.Module):
         output = torch.istft(predicted_spectrogram, n_fft = N_FFT, hop_length = NOVERLAP, window = self.window_tensor)
 
         return output, y_bottleneck
+    
+    def set_device(self, device):
+        self.window_tensor = self.window_tensor.to(device)
+        self.device = device
+
+class DenseNet(nn.Module):
+    def __init__(self, window_type = "hamming", pretrained=True):
+        super(DenseNet, self).__init__()
+        self.model = models.densenet201(pretrained=pretrained)
+        self.model.classifier = nn.Linear(1920, 10)
+        
+        if window_type == "hamming":
+            self.window_tensor = torch.hamming_window(N_FFT)
+        elif window_type == "bartlett":
+            self.window_tensor = torch.bartlett_window(N_FFT)
+        elif window_type == "blackman":
+            self.window_tensor = torch.blackman_window(N_FFT)
+        else:
+            print("Non valid window type. Proceeding with Boxcar.")
+            self.window_tensor = torch.ones_like(torch.blackman_window(N_FFT))
+
+        # This is not 'right' with respect to https://pytorch.org/hub/pytorch_vision_densenet/
+        self.preprocess = torchvision.transforms.Compose([
+            torchvision.transforms.Resize((128,250))])
+        
+        self.softmax = nn.Softmax(dim = 1)
+
+    def freeze_layers(self, layers_to_keep_unfrozen = ["", "classifier"]):
+        for name, layer in self.model.named_modules():
+            if not(name in layers_to_keep_unfrozen):
+                layer.requires_grad_(False)
+
+    def stft(self, audio):
+        return torch.stft(audio, n_fft = N_FFT, hop_length = NOVERLAP, window = self.window_tensor, return_complex = True)
+
+    def forward(self, x):
+        spectrogram = self.stft(x)
+
+        magnitude = torch.abs(spectrogram)
+
+        if len(magnitude.shape) < 3:
+            magnitude = torch.reshape(magnitude, shape = (1,1, magnitude.shape[0], magnitude.shape[1]))
+        else:
+            magnitude = torch.reshape(magnitude, shape = (magnitude.shape[0], 1, magnitude.shape[1], magnitude.shape[2]))
+
+        magnitude = magnitude[:,:,0:-1,:]
+        
+        # Concatenate to form a pseudo-image (grayscale)
+        magnitude = torch.cat((magnitude, magnitude, magnitude), dim = 1)
+
+        magnitude = self.preprocess(magnitude)
+
+        output = self.model(magnitude)
+        output = self.softmax(output)
+        return output
     
     def set_device(self, device):
         self.window_tensor = self.window_tensor.to(device)

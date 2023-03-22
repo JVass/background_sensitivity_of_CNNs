@@ -180,9 +180,9 @@ for epoch in range(EPOCHS):
             loss = loss_time + loss_freq
 
             test_loss += loss.item()
-            snr_sim = snr_similarity(outputs, audio)
-            sdsdr_sim = sdsdr_similarity(outputs, audio)
-            multires_spec_sim = multires_spec_similarity(outputs, audio)
+            snr_sim += snr_similarity(outputs, audio)
+            sdsdr_sim += sdsdr_similarity(outputs, audio)
+            multires_spec_sim += multires_spec_similarity(outputs, audio)
 
         test_loss_per_epoch = test_loss / len(test_loader)
         snr_sim /= len(test_loader)
