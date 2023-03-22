@@ -6,10 +6,11 @@ import torch
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 import matplotlib.pyplot as plt
-import torchvision
+import pandas as pd
+import seaborn as sns
 import numpy as np
 from torcheval.metrics.functional import multiclass_accuracy, multiclass_f1_score, multiclass_confusion_matrix
-from torcheval.metrics.functional import multiclass_precision, multiclass_recall 
+from torcheval.metrics.functional import multiclass_precision 
 
 from torch.utils.tensorboard import SummaryWriter
 
@@ -23,7 +24,6 @@ classification_loss = torch.nn.CrossEntropyLoss()
 f1_score = multiclass_f1_score
 accuracy = multiclass_accuracy
 precision = multiclass_precision
-recall = multiclass_recall
 confusion_matrix = multiclass_confusion_matrix
 
 train_parser = UrbanSound8K_parser(chunk_size=CHUNK_SIZE)
@@ -37,7 +37,6 @@ model = model.to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr = LEARNING_RATE)
 
 train_parser.prepare_folds(test_fold_no=1)
-train_parser.set_as_annotations(train_parser.test_annotations)
 train_parser.set_device(device)
 
 test_parser.prepare_folds(test_fold_no=1)
@@ -61,28 +60,24 @@ for epoch in range(EPOCHS):
 
         output_labels = model(audio)
 
-        true_labels = torch.nn.functional.one_hot(torch.squeeze(true_labels).type(torch.int64), 10).type(torch.float32)
+        true_labels_one_hot = torch.nn.functional.one_hot(torch.squeeze(true_labels).type(torch.int64), 10).type(torch.float32)
 
-        loss_value = classification_loss(output_labels, true_labels)
+        loss_value = classification_loss(output_labels, true_labels_one_hot)
 
         loss_value.backward()
         optimizer.step()
 
         train_loss += loss_value.item()
 
-        true_labels = torch.argmax(true_labels, dim = 1)
-
-        f1_value = f1_score(output_labels, true_labels)
-        accuracy_value = accuracy(output_labels, true_labels)
-        precision_value = precision(output_labels, true_labels)
-        recall_value = recall(output_labels, true_labels)
+        f1_value = f1_score(output_labels, torch.squeeze(true_labels).type(torch.int64), average="macro", num_classes=10)
+        accuracy_value = accuracy(output_labels, torch.squeeze(true_labels).type(torch.int64), average="macro", num_classes=10)
+        precision_value = precision(output_labels, torch.squeeze(true_labels).type(torch.int64), average="macro", num_classes=10)
 
         iter_no = iteration + epoch*len(train_loader)
         tensorboard_writer.add_scalars("Train", {"Train loss": loss_value.item(),
                                                        "Train F1" : f1_value.item(),
                                                        "Train Accuracy": accuracy_value.item(),
-                                                       "Train Precision": precision_value.item(),
-                                                       "Train Recall": recall_value.item()},
+                                                       "Train Precision": precision_value.item()},
                                                         iter_no)
         
     train_loss_per_epoch = train_loss / len(train_loader)
@@ -90,38 +85,41 @@ for epoch in range(EPOCHS):
     f1_value = 0
     accuracy_value = 0
     precision_value = 0
-    recall_value = 0
 
     # Test loss
     with torch.no_grad():
+        confusion_matrix_test = torch.zeros(size = (10,10)).type(torch.int64).to(device)
         for iteration, (audio, true_labels) in enumerate(tqdm(test_loader)):
             output_labels = model(audio)
 
-            true_labels = torch.nn.functional.one_hot(torch.squeeze(true_labels).type(torch.int64), 10).type(torch.float32)
+            true_labels_one_hot = torch.nn.functional.one_hot(torch.squeeze(true_labels).type(torch.int64), 10).type(torch.float32)
 
-            loss_value = classification_loss(output_labels, true_labels)
+            loss_value = classification_loss(output_labels, true_labels_one_hot)
 
             test_loss += loss_value.item()
 
-            true_labels = torch.argmax(true_labels, dim = 1)
+            f1_value += f1_score(output_labels, torch.squeeze(true_labels).type(torch.int64), average="macro", num_classes=10)
+            accuracy_value += accuracy(output_labels, torch.squeeze(true_labels).type(torch.int64), average="macro", num_classes=10)
+            precision_value += precision(output_labels, torch.squeeze(true_labels).type(torch.int64), average="macro", num_classes=10)
 
-            f1_value += f1_score(output_labels, true_labels)
-            accuracy_value += accuracy(output_labels, true_labels)
-            precision_value += precision(output_labels, true_labels)
-            recall_value += recall(output_labels, true_labels)
+            confusion_matrix_test += confusion_matrix(output_labels, torch.squeeze(true_labels).type(torch.int64), num_classes=10)
 
         test_loss_per_epoch = test_loss / len(test_loader)
         f1_value /= len(test_loader)
         accuracy_value /= len(test_loader)
         precision_value /= len(test_loader) 
-        recall_value /= len(test_loader)
 
         tensorboard_writer.add_scalars("Test", {"Test loss": test_loss_per_epoch,
                                                        "Train F1" : f1_value.item(),
                                                        "Train Accuracy": accuracy_value.item(),
-                                                       "Train Precision": precision_value.item(),
-                                                       "Train Recall": recall_value.item()},
+                                                       "Train Precision": precision_value.item()},
                                                         epoch)
+        
+        confusion_matrix_df = pd.DataFrame(confusion_matrix_test.cpu() / torch.sum(confusion_matrix_test, dim = 1).cpu())
+
+        tensorboard_writer.add_figure("Test confusion matrix",
+                                      sns.heatmap(confusion_matrix_df, annot=True).get_figure(),
+                                      epoch)
 
     
     # Early stopping
