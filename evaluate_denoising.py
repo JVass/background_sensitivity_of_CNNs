@@ -46,7 +46,7 @@ test_loader = torch.utils.data.DataLoader(test_parser, batch_size = 1, shuffle =
 noise_levels = [0.01, 0.02, 0.05, 0.1, 0.2, 0.5]
 
 
-with open("denoising_results.csv", "w") as file:
+with open("results/denoising_results.csv", "w") as file:
     writer = csv.writer(file)
 
     writer.writerow(["Noise level (%RMS)", "Train - SNR (Noisy/Gt)", "Train - SNR (Cleaned/Gt)", 

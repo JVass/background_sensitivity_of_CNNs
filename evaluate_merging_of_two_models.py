@@ -25,11 +25,17 @@ confusion_matrix = multiclass_confusion_matrix
 train_parser = UrbanSound8K_parser(chunk_size=CHUNK_SIZE)
 test_parser = UrbanSound8K_parser(chunk_size=CHUNK_SIZE)
 
-model = DenseNet()
-model.load_state_dict(torch.load("models/env_sound_classification_ckpt.pth"))
-model.set_device(device)
-model = model.to(device)
-model.eval()
+densenet_model = DenseNet()
+densenet_model.load_state_dict(torch.load("models/env_sound_classification_ckpt.pth"))
+densenet_model.set_device(device)
+densenet_model = densenet_model.to(device)
+densenet_model.eval()
+
+autoencoder_model = Autoencoder(n_channels=1, number_of_filters=64, device_name=device)
+autoencoder_model.load_state_dict(torch.load("models/denoise_ckpt.pth"))
+autoencoder_model.set_device(device)
+autoencoder_model.to(device)
+autoencoder_model.eval()
 
 train_parser.prepare_folds(test_fold_no=1)
 train_parser.set_device(device)
@@ -41,7 +47,7 @@ test_parser.set_device(device)
 train_loader = torch.utils.data.DataLoader(train_parser, batch_size = 64, shuffle = True)
 test_loader = torch.utils.data.DataLoader(test_parser, batch_size = 64, shuffle = False)
 
-with open("results/densenet_classification_results.csv", "w") as file:
+with open("results/autoenc_to_densenet_classification_results.csv", "w") as file:
     writer = csv.writer(file)
 
     writer.writerow(["Train - F1 Score", "Train - Accuracy", "Train - Precision",
@@ -61,7 +67,11 @@ with open("results/densenet_classification_results.csv", "w") as file:
 
         # Train set
         for iteration, (audio, true_labels) in enumerate(tqdm(train_loader)):
-            output_labels = model(audio)
+            # use autoencoder first
+            audio, _ = autoencoder_model(audio)
+
+            # test classification with autoencoded ('denoised/simplified')
+            output_labels = densenet_model(audio)
 
             true_labels_one_hot = torch.nn.functional.one_hot(torch.squeeze(true_labels).type(torch.int64), 10).type(torch.float32)
 
@@ -74,7 +84,8 @@ with open("results/densenet_classification_results.csv", "w") as file:
             train_precision += precision_value.item()
 
         for iteration, (audio, true_labels) in enumerate(tqdm(test_loader)):
-            output_labels = model(audio)
+            audio, _ = autoencoder_model(audio)
+            output_labels = densenet_model(audio)
 
             true_labels_one_hot = torch.nn.functional.one_hot(torch.squeeze(true_labels).type(torch.int64), 10).type(torch.float32)
 
@@ -93,8 +104,10 @@ with open("results/densenet_classification_results.csv", "w") as file:
         writer.writerow([train_f1_score/train_number_of_examples, train_accuracy_score/train_number_of_examples, train_precision/train_number_of_examples,
                             
                             test_f1_score/test_number_of_examples, test_accuracy_score/test_number_of_examples, test_precision/test_number_of_examples])
-        
-        confusion_matrix_df = pd.DataFrame(test_confusion_matrix.cpu() / torch.sum(test_confusion_matrix, dim = 1).cpu())
-        sns.heatmap(confusion_matrix_df, annot=True)
-        plt.savefig("results/densenet_confusion_matrix.png")
-        plt.close()
+    
+    # Saving the confusion matrix
+    confusion_matrix_df = pd.DataFrame(test_confusion_matrix.cpu() / torch.sum(test_confusion_matrix, dim = 1).cpu())
+    sns.heatmap(confusion_matrix_df, annot=True)
+    plt.savefig("results/autoenc_to_densenet_confusion_matrix.png")
+    plt.close()
+                            
