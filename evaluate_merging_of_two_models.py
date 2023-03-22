@@ -47,7 +47,7 @@ test_parser.set_device(device)
 train_loader = torch.utils.data.DataLoader(train_parser, batch_size = 64, shuffle = True)
 test_loader = torch.utils.data.DataLoader(test_parser, batch_size = 64, shuffle = False)
 
-with open("results/simplified_classification_results.csv", "w") as file:
+with open("results/autoenc_to_densenet_classification_results.csv", "w") as file:
     writer = csv.writer(file)
 
     writer.writerow(["Train - F1 Score", "Train - Accuracy", "Train - Precision",
@@ -108,6 +108,6 @@ with open("results/simplified_classification_results.csv", "w") as file:
     # Saving the confusion matrix
     confusion_matrix_df = pd.DataFrame(test_confusion_matrix.cpu() / torch.sum(test_confusion_matrix, dim = 1).cpu())
     sns.heatmap(confusion_matrix_df, annot=True)
-    plt.savefig("results/autoenc_to_dense_confusion_matrix.png")
+    plt.savefig("results/autoenc_to_densenet_confusion_matrix.png")
     plt.close()
                             

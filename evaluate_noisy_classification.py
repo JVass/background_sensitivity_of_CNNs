@@ -127,6 +127,6 @@ with open("results/noisy_autoenc_to_densenet_classification_results.csv", "w") a
     # Saving the confusion matrix
     confusion_matrix_df = pd.DataFrame(test_confusion_matrix.cpu() / torch.sum(test_confusion_matrix, dim = 1).cpu())
     sns.heatmap(confusion_matrix_df, annot=True)
-    plt.savefig("results/noisy_autoenc_to_dense_confusion_matrix.png")
+    plt.savefig("results/noisy_autoenc_to_densenet_confusion_matrix.png")
     plt.close()
                             
