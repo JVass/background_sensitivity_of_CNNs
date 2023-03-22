@@ -47,7 +47,7 @@ test_parser.set_device(device)
 train_loader = torch.utils.data.DataLoader(train_parser, batch_size = 64, shuffle = True)
 test_loader = torch.utils.data.DataLoader(test_parser, batch_size = 64, shuffle = False)
 
-with open("simplified_classification_results.csv", "w") as file:
+with open("results/simplified_classification_results.csv", "w") as file:
     writer = csv.writer(file)
 
     writer.writerow(["Train - F1 Score", "Train - Accuracy", "Train - Precision",
