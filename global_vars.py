@@ -1,4 +1,4 @@
-PATH_TO_DATASET = ""
+PATH_TO_DATASET = "ENTER_PATH_TO_DATASET"
 
 SR = 48000
 
@@ -16,7 +16,7 @@ BATCH_SIZE = 64
 EPOCHS = 100
 
 # Early stopping parameters
-PATIENCE = 3
+PATIENCE = 5
 MIN_DELTA = 0.01
 
 # Loss function weights
