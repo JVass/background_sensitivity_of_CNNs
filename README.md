@@ -15,8 +15,10 @@ Therefore,
 ---
 
 ## How to run
-1. On the file *global_vars.py*, insert the path to UrbanSound8k the variable ``` PATH_TO_DATASET = "" ```.
-2. Generate the csv through the metadata from the file by running *generate_useable_csv.py*
+1. On the file *global_vars.py*, insert the path to UrbanSound8k to the variable ``` PATH_TO_DATASET = "" ```.
+2. Generate the csv to be used, by running *generate_useable_csv.py*. This will save the relative paths to the UrbanSound8k samples
 3. Train the denoising Autoencoder with running * train_denoising.py*
 4. Train the DenseNet with *train_env_sound_classification.py*
-5. Run the evaluation scripts.
+5. Evaluate the denoising capabilities of the Autoencoder by running *evaluate_denoising.py*
+6. Evaluate the classification capabilities of the DenseNet by running *evaluate_classification.py*
+7. Evaluate the back-to-back connection of the Autoencoder with the DenseNet by running *evaluate_merging_of_two_models.py*.
